@@ -7,7 +7,7 @@ import json
 import urllib.parse
 
 # 通知服务配置
-SCKEY = os.getenv("SCKEY", "")  # Server酱的SCKEY
+SCKEY = os.getenv("SCKEY", "SCT439367T0nHEzLkeeiTP3mpxK64SUEEI")  # Server酱的SCKEY
 XZKEY = os.getenv("XZKEY", "")  # 息知的XZKEY
 PUSH_PLUS_TOKEN = os.getenv("PUSH_PLUS_TOKEN", "")  # PushPlus的TOKEN
 
