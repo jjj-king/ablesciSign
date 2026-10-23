@@ -32,10 +32,9 @@ def serverJ(title, content):
         print('Server酱推送失败！')
 
 def xizhi(title, content):
-    """息知通知"""
+    """息知通知：请求一次，失败交给上层通知器记录。"""
     if not XZKEY:
-        print("息知的XZKEY未设置")
-        return
+        raise RuntimeError("未配置XZKEY，请在当前仓库的Actions Secrets中添加息知密钥。")
     
     print("息知服务启动")
     headers = {'Content-Type': 'application/json'}
@@ -45,13 +44,21 @@ def xizhi(title, content):
     }
     data = json.dumps(json_data).encode('utf-8')
     try:
-        response = requests.post(f"https://xizhi.qqoq.net/{XZKEY}.send", data=data, headers=headers)
-        if response.status_code == 200:
-            print('息知推送成功！')
-        else:
-            print(f'息知推送失败，状态码: {response.status_code}')
-    except Exception as e:
-        print(f'息知推送失败: {str(e)}')
+        response = requests.post(
+            f"https://xizhi.qqoq.net/{XZKEY}.send", data=data, headers=headers,
+            timeout=20, allow_redirects=False
+        )
+        if response.status_code != 200:
+            raise RuntimeError(f"息知请求失败，HTTP状态码：{response.status_code}；未自动重试。")
+        result = response.json()
+    except (requests.RequestException, ValueError):
+        # 息知密钥位于请求地址中，网络异常详情可能包含密钥，不能回显。
+        raise RuntimeError("息知网络请求失败或响应无法解析；未自动重试，请先检查微信或息知记录。") from None
+    if not isinstance(result, dict) or type(result.get('code')) is not int or result['code'] != 200:
+        code = result.get('code') if isinstance(result, dict) else None
+        code_info = str(code) if type(code) is int else "未知"
+        raise RuntimeError(f"息知未接受请求，返回码：{code_info}；请检查XZKEY和息知配置。")
+    print('息知请求已接收，请以微信实际收到消息或息知记录为准。')
 
 def pushplus_bot(title, content):
     """发送一次PushPlus请求；失败时交给上层通知器记录，不自动重发。"""
