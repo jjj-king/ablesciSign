@@ -7,9 +7,9 @@ import json
 import urllib.parse
 
 # 通知服务配置
-SCKEY = os.getenv("SCKEY", "")  # Server酱的SCKEY
-XZKEY = os.getenv("XZKEY", "")  # 息知的XZKEY
-PUSH_PLUS_TOKEN = os.getenv("PUSH_PLUS_TOKEN", "")  # PushPlus的TOKEN
+SCKEY = os.getenv("SCKEY", "").strip()  # Server酱的SCKEY
+XZKEY = os.getenv("XZKEY", "").strip()  # 息知的XZKEY
+PUSH_PLUS_TOKEN = os.getenv("PUSH_PLUS_TOKEN", "").strip()  # PushPlus的TOKEN
 
 # 消息容器
 message_info = ''''''
@@ -54,28 +54,35 @@ def xizhi(title, content):
         print(f'息知推送失败: {str(e)}')
 
 def pushplus_bot(title, content):
-    """PushPlus通知"""
+    """发送一次PushPlus请求；失败时交给上层通知器记录，不自动重发。"""
     if not PUSH_PLUS_TOKEN:
-        print("PushPlus的TOKEN未设置")
-        return
-    
+        raise RuntimeError("未配置PUSH_PLUS_TOKEN，请在当前仓库的Actions Secrets中添加。")
+
     print("PushPlus服务启动")
-    url = 'http://www.pushplus.plus/send'
+    url = 'https://www.pushplus.plus/send'
     data = {
         "token": PUSH_PLUS_TOKEN,
         "title": title,
-        "content": content
+        "content": content,
+        "template": "txt",
+        "channel": "wechat"
     }
     headers = {'Content-Type': 'application/json'}
     try:
-        response = requests.post(url, json=data, headers=headers)
+        response = requests.post(
+            url, json=data, headers=headers, timeout=20, allow_redirects=False
+        )
+        if response.status_code != 200:
+            raise RuntimeError(f"PushPlus请求失败，HTTP状态码：{response.status_code}；未自动重试。")
         result = response.json()
-        if result.get('code') == 200:
-            print('PushPlus推送成功！')
-        else:
-            print(f'PushPlus推送失败: {result.get("msg", "未知错误")}')
-    except Exception as e:
-        print(f'PushPlus推送失败: {str(e)}')
+    except (requests.RequestException, ValueError):
+        # 不回显异常详情或响应正文，避免第三方错误信息包含Token。
+        raise RuntimeError("PushPlus网络请求失败或响应无法解析；未自动重试，请先检查微信或推送记录。") from None
+    if not isinstance(result, dict) or type(result.get('code')) is not int or result['code'] != 200:
+        code = result.get('code') if isinstance(result, dict) else None
+        code_info = str(code) if type(code) is int else "未知"
+        raise RuntimeError(f"PushPlus未接受请求，返回码：{code_info}；请检查Token、实名状态和额度。")
+    print('PushPlus请求已接收，请以微信实际收到消息或平台推送记录为准。')
 
 def send(title, content):
     """
