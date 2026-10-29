@@ -3,7 +3,7 @@ name: AbleSci Auto Sign
 on:
   workflow_dispatch:
   schedule:
-    - cron: '40 13 * * *'  # UTC 13:40 = 北京时间21:40，每天只保留第二次运行
+    - cron: '30 2 * * *'  # UTC 02:30 = 北京时间每天10:30，仅运行一次；实际启动可能排队延迟
 
 permissions:
   contents: read
