@@ -3,7 +3,7 @@
 ![GitHub last commit](https://img.shields.io/github/last-commit/daitcl/ablesciSign)
 ![GitHub Workflow Status](https://img.shields.io/github/actions/workflow/status/daitcl/ablesciSign/ablesciSign.yml)
 
-这是一个用于科研通(AbleSci)网站的自动签到脚本，支持青龙面板和GitHub Actions双平台运行。每日北京时间7点40,21点40，两个时间点自动签到。
+这是一个用于科研通(AbleSci)网站的自动签到脚本，支持青龙面板和GitHub Actions双平台运行。GitHub Actions每日北京时间21:40自动签到并推送一次，已取消7:40的第一次运行。
 
 ## 目录
 1. [功能特点](#1-功能特点)
@@ -194,10 +194,10 @@ user1@example.com:password1,user2@example.com:password2;user3@example.com:passwo
 
 ## 4. 定时任务说明
 脚本默认在以下时间执行：
-- 北京时间：7:40 和 21:40
-- UTC 时间：23:40（前一日）和 13:40（当日），分别对应北京时间次日 7:40 和当日 21:40
+- GitHub Actions北京时间：每天21:40，仅保留原第二次运行。
+- 对应UTC时间：每天13:40；已取消北京时间7:40的第一次运行。
 
-GitHub Actions 的 cron 使用 UTC，工作流中写的是 `40 13,23 * * *`；青龙面板的定时规则使用本地时区（一般为北京时间），写的是 `40 7,21 * * *`。
+GitHub Actions的cron使用UTC，当前工作流为`40 13 * * *`。青龙面板的定时规则由本地面板单独管理；若也希望每天仅21:40运行，可设置为`40 21 * * *`（北京时间）。手动运行仍会额外签到并推送一次。
 
 ---
 
