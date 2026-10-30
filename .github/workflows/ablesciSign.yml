@@ -1,49 +1,52 @@
 name: AbleSci Auto Sign
 
 on:
-  workflow_dispatch:
   schedule:
-    - cron: '30 2 * * *'  # UTC 02:30 = 北京时间每天10:30，仅运行一次；实际启动可能排队延迟
+    - cron: '17 * * * *' # 每小时检查一次；实际发送受北京时间窗口和日期去重控制。
+  workflow_dispatch:
+    inputs:
+      force:
+        description: '忽略今日已发送标记，明确额外发送一次'
+        type: boolean
+        required: false
+        default: false
 
 permissions:
-  contents: read
+  contents: write # 仅用于daily-delivery-state分支的每日发送标记。
+
+concurrency:
+  group: ablesci-daily-xizhi
+  cancel-in-progress: false
 
 jobs:
   sign:
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v5
-
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - name: Check actual Beijing delivery window
+        id: window
+        run: python delivery_schedule.py --start 10:30 --end 13:30 --check-window
       - name: Set up Python
-        uses: actions/setup-python@v6
+        if: ${{ steps.window.outputs.allowed == 'true' }}
+        uses: actions/setup-python@v7
         with:
           python-version: '3.10'
           cache: 'pip'
-
       - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt
-
-      - name: Check XiZhi configuration
+        if: ${{ steps.window.outputs.allowed == 'true' }}
+        run: python -m pip install -r requirements.txt
+      - name: Run AbleSci once in its delivery window
+        if: ${{ steps.window.outputs.allowed == 'true' }}
         env:
-          XZKEY: ${{ secrets.XZKEY }}
-        run: |
-          python - <<'PY'
-          import os
-          if not os.environ.get("XZKEY", "").strip():
-              raise SystemExit("请在当前仓库的Actions Secrets中添加XZKEY（息知推送密钥）。")
-          print("息知Secret已配置（不显示密钥内容）。")
-          PY
-
-      - name: Run AbleSci Sign
-        id: sign
-        run: python ablesci.py
-        env:
-          GITHUB_ACTIONS: true
+          GITHUB_TOKEN: ${{ github.token }}
+          GITHUB_ACTIONS: 'true'
           ABLESCI_ACCOUNTS: ${{ secrets.ABLESCI_ACCOUNTS }}
-          # 本工作流仅通过息知推送；空值也阻止本地.env重新启用其他渠道。
-          SCKEY: ''
           XZKEY: ${{ secrets.XZKEY }}
+          SCKEY: ''
           PUSH_PLUS_TOKEN: ''
+          FORCE_SEND: ${{ github.event_name == 'workflow_dispatch' && inputs.force }}
+        run: python delivery_schedule.py --start 10:30 --end 13:30 -- python ablesci.py

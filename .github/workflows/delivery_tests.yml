@@ -1,0 +1,27 @@
+name: Delivery Schedule Tests
+
+on:
+  push:
+    paths:
+      - 'delivery_schedule.py'
+      - 'tests/**'
+      - '.github/workflows/ablesciSign.yml'
+      - '.github/workflows/delivery_tests.yml'
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+      - run: python -m unittest discover -s tests -v
