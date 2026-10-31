@@ -1,0 +1,40 @@
+name: AbleSci Recovery Once
+
+on:
+  push:
+    branches:
+      - 'jjj-king-patch-1'
+    paths:
+      - '.github/workflows/recovery_once.yml'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: ablesci-daily-xizhi
+  cancel-in-progress: false
+
+jobs:
+  sign:
+    if: ${{ github.event.head_commit.message == 'Recover missed daily notifications 20261031-v1' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.10'
+          cache: 'pip'
+      - run: python -m pip install -r requirements.txt
+      - name: Send today's missed sign-in result
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          GITHUB_ACTIONS: 'true'
+          ABLESCI_ACCOUNTS: ${{ secrets.ABLESCI_ACCOUNTS }}
+          XZKEY: ${{ secrets.XZKEY }}
+          SCKEY: ''
+          PUSH_PLUS_TOKEN: ''
+          FORCE_SEND: 'false'
+        run: python delivery_schedule.py --start 10:00 --end 18:00 -- python ablesci.py
